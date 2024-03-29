@@ -1,0 +1,387 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Asyril.Console;
+using Asyril.Program;
+using Asyril.Robot;
+using Asyril.Vision;
+using System.Threading;
+
+namespace Asyril.Program
+{
+    public class Program : IProgram
+    {
+        #region Init Program and needed function
+        //Create Program Console Control
+        private AsyrilConsoleControl ProgramConsole = new AsyrilConsoleControl();
+        //Create Program Vision Control
+        private AsyrilVisionControl ProgramVision = new AsyrilVisionControl();
+        private VisionInterface visioninterface = new VisionInterface();
+        //Create Program Robot Control
+        private AsyrilRobotControl ProgramRobot = new AsyrilRobotControl();
+        private RobotInterface robotinterface = new RobotInterface();
+        //Create Programm Thread
+        private Thread programmThread;
+
+
+        public void InitConsole(AsyrilConsoleControl MyConsolControl)
+        {
+            ProgramConsole = MyConsolControl;
+        }
+
+        public void InitRobot(AsyrilRobotControl MyRobotControl)
+        {
+            ProgramRobot = MyRobotControl;
+            robotinterface = ProgramRobot.getRobotInterface();
+
+        }
+
+        public void InitVision(AsyrilVisionControl MyVisionControl)
+        {
+            ProgramVision = MyVisionControl;
+            visioninterface = ProgramVision.getVisionInterface();
+        }
+
+        public void start()
+        {
+            programmThread = new Thread(new ThreadStart(run));
+            programmThread.Start();
+        }
+
+        public void stop()
+        {
+            try
+            {
+                programmThread.Join(1);
+                programmThread.Abort();
+                programmThread = null;
+            }
+            catch (Exception)
+            { }
+        }
+        #endregion
+
+
+        public void run()
+        {
+            // ---------------------------------------------------------------
+            // -----------------  Partie Prise en main -----------------------
+            //----------------------------------------------------------------
+
+
+            // Write "hello world"
+            ProgramConsole.WriteLine("Hello !!!!!!");
+            ProgramConsole.WriteLine(" My name is  MIR -GREEM ");
+            ProgramConsole.WriteLine("I m a parallel robot with 4 DoF");
+
+            // ---------------------------------------------------------------
+            // -----------------  Partie Pick and place ----------------------
+            //----------------------------------------------------------------
+
+            //declare et intitialise un Robot Workspace
+            RobotWorkspace RWS = new RobotWorkspace();
+            RWS.FrameID = 0;
+            RWS.PointID = 0;
+            RWS.ToolID = 0;
+            RWS.MotionSequenceID = 0;
+
+            //declare et intitialise un Robot Motionparameters
+            RobotMotionParameters RMP = new RobotMotionParameters();
+            RMP.accFactor = 1;
+            RMP.decFactor = 1;
+            RMP.jerkFactor = 1;
+            RMP.speedFactor = 0.25;
+
+            //declare et intitialise un Robot Action
+            RobotAction RA = new RobotAction();
+            RA.actionCode = 0;
+            RA.channel = 0;
+            RA.state = false;
+            RA.value = 0;
+
+
+            ////************************************************************************************************* 
+            // Revoir les position de pointPrise, pointDepot et pointRepos
+
+            // Suivant la positon de U par exemple pour le quelle sa marche bien
+            // attention a ne pas mettre Z = 0 car le robot depasse la vitre 
+            ////************************************************************************************************* 
+
+
+            // definition du point de prise
+
+            RobotPosition pointPrise;
+            pointPrise.X = 0.0391445;  // position en x 
+            pointPrise.Y = 0.0013542;  // position en y
+            pointPrise.Z = 0.0075000;    // position en z // attention 
+            pointPrise.RZ = 0;      // rotation en z
+
+            // definition du point de depot 'pointDepose'
+            RobotPosition pointPose;
+            pointPose.X = 0.0290000;  // position en x 
+            pointPose.Y = 0.0200022;  // position en y
+            pointPose.Z = 0.0075000;    // position en z // attention 
+            pointPose.RZ = 0;      // rotation en z
+
+            // definition du point de depot 'pointRepos'
+
+            RobotPosition pointRepos;
+            pointRepos.X = 0.000000;  // position en x 
+            pointRepos.Y = 0.0000000;  // position en y
+            pointRepos.Z = 0.0263319;    // position en z // attention 
+            pointRepos.RZ = 0;      // rotation en z
+
+            
+         ////*************************************************************************************************   
+         //// Methode de pick and place d une lettre quelconque
+         ////************************************************************************************************* 
+
+            // aller a la position de initiale (position repos)
+
+           // repos(pointRepos, RWS, RMP, RA);
+          
+           // // aller a la position de prise
+
+           // pick(pointPrise, RWS, RMP, RA);
+
+           // //repos(pointRepos, RWS, RMP, RA);
+
+           // // aller a la position de depot
+           // // ....................................................................
+           //place(pointPose, RWS, RMP, RA);
+           // //revenir a la position initiale;
+           // repos(pointRepos, RWS, RMP, RA);
+
+
+
+            // ---------------------------------------------------------------
+            // ---------------  Partie Robot avec vision ---------------------
+            //----------------------------------------------------------------
+
+            VisionPoint VisionPoint = new VisionPoint(); // definit le point vision (milieux de la lettre U)
+
+            //// Placement de la lettre S
+            visioninterface.ModelNumber(VisionModel.Model03);
+            VisionPoint = visioninterface.getVisionPoint();
+            if (VisionPoint.Found)
+            {
+                RobotPosition Take;
+                Take.X = VisionPoint.X;
+                Take.Y = VisionPoint.Y;
+                Take.RZ = VisionPoint.RZ;
+                Take.Z = 0.0073;
+                RobotPosition Put;
+                Put.X = 0.014;
+                Put.Y = -0.012;
+                Put.Z = 0.0;
+                Put.RZ = 0;
+
+                repos(pointRepos, RWS, RMP, RA);
+                pick(Take, RWS, RMP, RA);
+                place(Put, RWS, RMP, RA);
+                repos(pointRepos, RWS, RMP, RA);
+
+
+            }
+            else
+            {
+                ProgramConsole.WriteLine("Model not found");
+            }
+
+            //// Placement de la lettre A
+            visioninterface.ModelNumber(VisionModel.Model04);
+            VisionPoint = visioninterface.getVisionPoint();
+            if (VisionPoint.Found)
+            {
+                RobotPosition Take;
+                Take.X = VisionPoint.X;
+                Take.Y = VisionPoint.Y;
+                Take.RZ = VisionPoint.RZ;
+                Take.Z = 0.0073;
+                RobotPosition Put;
+                Put.X = 0.006;
+                Put.Y = -0.012;
+                Put.Z = 0.0;
+                Put.RZ = 0;
+
+                repos(pointRepos, RWS, RMP, RA);
+                pick(Take, RWS, RMP, RA);
+                place(Put, RWS, RMP, RA);
+                repos(pointRepos, RWS, RMP, RA);
+
+
+            }
+            else
+            {
+                ProgramConsole.WriteLine("Model not found");
+            }
+
+            //// Placement de la lettre L
+            visioninterface.ModelNumber(VisionModel.Model05);
+            VisionPoint = visioninterface.getVisionPoint();
+            if (VisionPoint.Found)
+            {
+                RobotPosition Take;
+                Take.X = VisionPoint.X;
+                Take.Y = VisionPoint.Y;
+                Take.RZ = VisionPoint.RZ;
+                Take.Z = 0.0073;
+                RobotPosition Put;
+                Put.X = -0.002;
+                Put.Y = -0.012;
+                Put.Z = 0.0;
+                Put.RZ = 0;
+
+                repos(pointRepos, RWS, RMP, RA);
+                pick(Take, RWS, RMP, RA);
+                place(Put, RWS, RMP, RA);
+                repos(pointRepos, RWS, RMP, RA);
+
+
+            }
+            else
+            {
+                ProgramConsole.WriteLine("Model not found");
+            }
+            //// Placement de la lettre U
+            visioninterface.ModelNumber(VisionModel.Model02);
+            VisionPoint = visioninterface.getVisionPoint();
+            if (VisionPoint.Found)
+            {
+                RobotPosition Take;
+                Take.X = VisionPoint.X;
+                Take.Y = VisionPoint.Y;
+                Take.RZ = VisionPoint.RZ;
+                Take.Z = 0.0073;
+                RobotPosition Put;
+                Put.X = -0.010;
+                Put.Y = -0.012;
+                Put.Z = 0.0;
+                Put.RZ = 0;
+
+                repos(pointRepos, RWS, RMP, RA);
+                pick(Take, RWS, RMP, RA);
+                place(Put, RWS, RMP, RA);
+                repos(pointRepos, RWS, RMP, RA);
+
+
+            }
+            else
+            {
+                ProgramConsole.WriteLine("Model not found");
+            }
+
+            //// Placement de la lettre T
+            visioninterface.ModelNumber(VisionModel.Model01);
+            VisionPoint = visioninterface.getVisionPoint();
+            if (VisionPoint.Found)
+            {
+                RobotPosition Take;
+                Take.X = VisionPoint.X;
+                Take.Y = VisionPoint.Y;
+                Take.RZ = VisionPoint.RZ;
+                Take.Z = 0.0073;
+                RobotPosition Put;
+                Put.X = -0.018;
+                Put.Y = -0.012;
+                Put.Z = 0.0;
+                Put.RZ = 0;
+
+                repos(pointRepos, RWS, RMP, RA);
+                pick(Take, RWS, RMP, RA);
+                place(Put, RWS, RMP, RA);
+                repos(pointRepos, RWS, RMP, RA);
+
+
+            }
+            else
+            {
+                ProgramConsole.WriteLine("Model not found");
+            }
+
+        
+
+      
+        }
+
+        // ----------------------------------------------------------------------------------------------------------------
+        // ---------------  Methode de deplacement du robot avec sequence d'asspiration et de souffle ---------------------
+        //-----------------------------------------------------------------------------------------------------------------
+
+        
+
+       // fonction de pick: cette fonction a pour objectif de chercher l objet   la position indiqu e par le point PickPoint
+
+        public void pick(RobotPosition PickPoint, RobotWorkspace RWS, RobotMotionParameters RMP, RobotAction RA)
+
+        {
+            // Condition de securit  du robot 
+            if (PickPoint.Z <= 0.007)
+                PickPoint.Z = 0.007;
+
+            // approche securise de lq position de pick
+            PickPoint.Z = 0.01;
+            robotinterface.moveTo(PickPoint, RWS, RMP, RA, RobotMotionMode.NOBLEND, TaskPlannerMode.APPEND, true);
+            Thread.Sleep(200);
+            PickPoint.Z = 0.007;
+            robotinterface.moveTo(PickPoint, RWS, RMP, RA, RobotMotionMode.NOBLEND, TaskPlannerMode.APPEND, true);
+            Thread.Sleep(200); // attente
+            robotinterface.writeDigitalOutput(1, false);
+            robotinterface.writeDigitalOutput(0, true);
+            Thread.Sleep(200);
+            PickPoint.Z = 0.01;
+            robotinterface.moveTo(PickPoint, RWS, RMP, RA, RobotMotionMode.NOBLEND, TaskPlannerMode.APPEND, true);
+            
+           
+        }
+
+        //repos
+
+        public void repos(RobotPosition ReposPoint, RobotWorkspace RWS, RobotMotionParameters RMP, RobotAction RA)
+        {
+            // Condition de securit  du robot 
+            if (ReposPoint.Z <= 0.007)
+                ReposPoint.Z = 0.007;
+
+            // approche securise de lq position de pick
+            ReposPoint.Z = 0.01;
+            robotinterface.moveTo(ReposPoint, RWS, RMP, RA, RobotMotionMode.NOBLEND, TaskPlannerMode.APPEND, true);
+            Thread.Sleep(200); // attente
+            
+
+
+        }
+
+       // fonction de place: cette fonction a pour objectif de d poser l objet   la position indiqu e par le point PickPlace
+
+
+        public void place(RobotPosition PlacePoint, RobotWorkspace RWS, RobotMotionParameters RMP, RobotAction RA)
+        {
+            // Condition de securit  du robot 
+            if (PlacePoint.Z <= 0.007)
+                PlacePoint.Z = 0.007;
+
+            PlacePoint.Z = 0.01;
+            robotinterface.moveTo(PlacePoint, RWS, RMP, RA, RobotMotionMode.NOBLEND, TaskPlannerMode.APPEND, true);
+            Thread.Sleep(200); // attente
+            PlacePoint.Z = 0.007;
+            robotinterface.moveTo(PlacePoint, RWS, RMP, RA, RobotMotionMode.NOBLEND, TaskPlannerMode.APPEND, true);
+            Thread.Sleep(200); // attente
+            robotinterface.writeDigitalOutput(0, false);
+            Thread.Sleep(200); // attente
+            robotinterface.writeDigitalOutput(1, false);
+            Thread.Sleep(200); // attente
+            PlacePoint.Z = 0.01;
+            robotinterface.moveTo(PlacePoint, RWS, RMP, RA, RobotMotionMode.NOBLEND, TaskPlannerMode.APPEND, true);
+
+           
+
+        }
+
+
+
+
+
+         }
+}
